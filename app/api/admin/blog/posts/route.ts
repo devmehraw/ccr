@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const {
       title,
+      slug: customSlug,
       excerpt,
       content,
       category,
@@ -106,7 +107,8 @@ export async function POST(request: Request) {
       const db = client.db("countryroof")
       const collection = db.collection("blog_posts")
 
-      const slug = slugify(title)
+      // Use custom slug if provided, otherwise generate from title
+      const slug = customSlug ? customSlug.trim() : slugify(title)
 
       // Check for existing slug
       const existingPost = await collection.findOne({ slug })

@@ -94,6 +94,7 @@ export async function PUT(
     const body = await request.json()
     const {
       title,
+      slug: customSlug,
       excerpt,
       content,
       category,
@@ -144,11 +145,22 @@ export async function PUT(
         })
       }
 
-      // Generate new slug if title changed
+      // Use custom slug if provided, otherwise keep existing or generate from title
       let slug = existingPost.slug
-      if (title !== existingPost.title) {
-        slug = slugify(title)
+      if (customSlug && customSlug.trim()) {
+        // Use the custom slug provided by user
+        slug = customSlug.trim()
         // Check for existing slug (excluding current post)
+        const duplicateSlug = await collection.findOne({ 
+          slug, 
+          _id: { $ne: existingPost._id } 
+        })
+        if (duplicateSlug) {
+          slug = `${slug}-${Date.now()}`
+        }
+      } else if (title !== existingPost.title && !existingPost.slug) {
+        // Only auto-generate slug if title changed AND there's no existing slug
+        slug = slugify(title)
         const duplicateSlug = await collection.findOne({ 
           slug, 
           _id: { $ne: existingPost._id } 

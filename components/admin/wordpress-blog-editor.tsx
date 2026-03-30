@@ -1174,6 +1174,7 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
 
       const payload = {
         ...formData,
+        slug: formData.slug || "", // Explicitly include slug (empty string means auto-generate)
         category: formData.categories,
         tags: formData.tags as string[],
         meta_keywords: (formData.keywords as string[]).join(", "),
