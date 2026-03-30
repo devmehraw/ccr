@@ -54,13 +54,25 @@ import {
   ListOrdered,
   Quote,
   Code,
-  Minus
+  Minus,
+  HelpCircle,
+  Braces,
+  Trash2,
+  GripVertical,
+  Copy,
+  CheckCheck
 } from "lucide-react"
 
 interface BlogCategory {
   _id: string
   name: string
   slug: string
+}
+
+interface FAQItem {
+  id: string
+  question: string
+  answer: string
 }
 
 interface WordPressBlogEditorProps {
@@ -83,6 +95,7 @@ interface WordPressBlogEditorProps {
     tags?: string[] | string
     is_published?: boolean
     slug?: string
+    faqs?: FAQItem[]
   }
 }
 
@@ -173,6 +186,326 @@ function GooglePreview({
         </p>
         <p className="text-xs text-muted-foreground line-clamp-2">{displayDesc}</p>
       </div>
+    </div>
+  )
+}
+
+// Schema Markup Generator
+function generateBlogSchema({
+  title,
+  excerpt,
+  content,
+  author,
+  slug,
+  cover_image,
+  categories,
+  tags,
+  faqs,
+  datePublished,
+  dateModified,
+  siteUrl = "https://countryroof.com"
+}: {
+  title: string
+  excerpt: string
+  content: string
+  author: string
+  slug: string
+  cover_image: string
+  categories: string[]
+  tags: string[]
+  faqs: FAQItem[]
+  datePublished?: string
+  dateModified?: string
+  siteUrl?: string
+}) {
+  // Get plain text word count
+  const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null
+  let plainText = content
+  if (tempDiv) {
+    tempDiv.innerHTML = content
+    plainText = tempDiv.textContent || tempDiv.innerText || ''
+  } else {
+    plainText = content.replace(/<[^>]*>/g, ' ')
+  }
+  const wordCount = plainText.trim().split(/\s+/).filter(w => w.length > 0).length
+
+  const schemas: object[] = []
+
+  // Article Schema
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": title,
+    "description": excerpt || plainText.substring(0, 160),
+    "author": {
+      "@type": "Person",
+      "name": author || "Country Roof"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Country Roof",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${siteUrl}/logo.png`
+      }
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `${siteUrl}/blog/${slug}`
+    },
+    "url": `${siteUrl}/blog/${slug}`,
+    "datePublished": datePublished || new Date().toISOString(),
+    "dateModified": dateModified || new Date().toISOString(),
+    "wordCount": wordCount,
+    ...(cover_image && {
+      "image": {
+        "@type": "ImageObject",
+        "url": cover_image
+      }
+    }),
+    ...(categories.length > 0 && {
+      "articleSection": categories[0]
+    }),
+    ...(tags.length > 0 && {
+      "keywords": tags.join(", ")
+    })
+  }
+  schemas.push(articleSchema)
+
+  // FAQ Schema (if FAQs exist)
+  if (faqs.length > 0) {
+    const faqSchema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": faqs.map(faq => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer
+        }
+      }))
+    }
+    schemas.push(faqSchema)
+  }
+
+  // BreadcrumbList Schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": siteUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": `${siteUrl}/blog`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": title,
+        "item": `${siteUrl}/blog/${slug}`
+      }
+    ]
+  }
+  schemas.push(breadcrumbSchema)
+
+  return schemas
+}
+
+// Schema Preview Modal Component
+function SchemaPreviewModal({
+  isOpen,
+  onClose,
+  schemas
+}: {
+  isOpen: boolean
+  onClose: () => void
+  schemas: object[]
+}) {
+  const [copied, setCopied] = useState(false)
+
+  if (!isOpen) return null
+
+  const schemaString = JSON.stringify(schemas, null, 2)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(schemaString)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy:", err)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+      <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col m-4">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Braces className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Schema Markup Preview</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="gap-2"
+            >
+              {copied ? (
+                <>
+                  <CheckCheck className="h-4 w-4 text-green-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="space-y-4">
+            {schemas.map((schema, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-primary">
+                    {(schema as { "@type"?: string })["@type"] || "Schema"} Schema
+                  </span>
+                  <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-600 rounded-full">
+                    Valid JSON-LD
+                  </span>
+                </div>
+                <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto font-mono">
+                  <code>{JSON.stringify(schema, null, 2)}</code>
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="px-4 py-3 border-t border-border bg-muted/30">
+          <p className="text-xs text-muted-foreground">
+            This schema markup will be automatically embedded in your blog post when published.
+            It helps search engines understand your content better and can improve rich snippets in search results.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// FAQ Section Component
+function FAQSection({
+  faqs,
+  onAddFaq,
+  onUpdateFaq,
+  onRemoveFaq
+}: {
+  faqs: FAQItem[]
+  onAddFaq: () => void
+  onUpdateFaq: (id: string, field: "question" | "answer", value: string) => void
+  onRemoveFaq: (id: string) => void
+}) {
+  return (
+    <div className="border border-border rounded-lg bg-card">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-2">
+          <HelpCircle className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Frequently Asked Questions</h3>
+          <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+            {faqs.length} {faqs.length === 1 ? "FAQ" : "FAQs"}
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onAddFaq}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add FAQ
+        </Button>
+      </div>
+      
+      <div className="p-4 space-y-4">
+        {faqs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-20" />
+            <p className="text-sm font-medium mb-1">No FAQs added yet</p>
+            <p className="text-xs">Add frequently asked questions to improve SEO with FAQ schema markup.</p>
+          </div>
+        ) : (
+          faqs.map((faq, index) => (
+            <div
+              key={faq.id}
+              className="group border border-border rounded-lg bg-background hover:border-primary/50 transition-colors"
+            >
+              <div className="flex items-start gap-3 p-4">
+                <div className="flex items-center gap-2 text-muted-foreground pt-2">
+                  <GripVertical className="h-4 w-4 opacity-50 cursor-grab" />
+                  <span className="text-sm font-medium text-primary w-6">{index + 1}.</span>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      Question
+                    </label>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => onUpdateFaq(faq.id, "question", e.target.value)}
+                      placeholder="Enter the question..."
+                      className="font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      Answer
+                    </label>
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => onUpdateFaq(faq.id, "answer", e.target.value)}
+                      placeholder="Enter the answer..."
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRemoveFaq(faq.id)}
+                  className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {faqs.length > 0 && (
+        <div className="px-4 py-3 border-t border-border bg-muted/30">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <Braces className="h-3 w-3" />
+            FAQ Schema markup will be automatically generated for search engines.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -511,6 +844,7 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [autoSaving, setAutoSaving] = useState(false)
+  const [showSchemaPreview, setShowSchemaPreview] = useState(false)
 
   // Parse initial categories
   const getInitialCategories = () => {
@@ -538,6 +872,7 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
     keywords: Array.isArray(initialData?.meta_keywords) ? initialData.meta_keywords : typeof initialData?.meta_keywords === 'string' ? initialData.meta_keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
     is_published: initialData?.is_published || false,
     slug: initialData?.slug || "",
+    faqs: initialData?.faqs || [] as FAQItem[],
   })
 
   const [loading, setLoading] = useState(false)
@@ -824,12 +1159,27 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
       const url = isEditing ? `/api/admin/blog/posts/${initialData?._id}` : "/api/admin/blog/posts"
       const method = isEditing ? "PUT" : "POST"
 
+      // Generate schema markup for the blog post
+      const schemaMarkup = generateBlogSchema({
+        title: formData.title,
+        excerpt: formData.excerpt,
+        content: formData.content,
+        author: formData.author,
+        slug: formData.slug || generateSlug(formData.title),
+        cover_image: formData.cover_image,
+        categories: formData.categories,
+        tags: formData.tags as string[],
+        faqs: formData.faqs
+      })
+
       const payload = {
         ...formData,
         category: formData.categories,
         tags: formData.tags as string[],
         meta_keywords: (formData.keywords as string[]).join(", "),
         is_published: publishStatus,
+        faqs: formData.faqs,
+        schema_markup: schemaMarkup,
       }
 
       const response = await fetch(url, {
@@ -862,6 +1212,48 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
     const slug = formData.slug || generateSlug(formData.title)
     window.open(`/blog/${slug}?preview=true`, "_blank")
   }
+
+  // FAQ handlers
+  const handleAddFaq = () => {
+    const newFaq: FAQItem = {
+      id: crypto.randomUUID(),
+      question: "",
+      answer: ""
+    }
+    setFormData(prev => ({
+      ...prev,
+      faqs: [...prev.faqs, newFaq]
+    }))
+  }
+
+  const handleUpdateFaq = (id: string, field: "question" | "answer", value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: prev.faqs.map(faq =>
+        faq.id === id ? { ...faq, [field]: value } : faq
+      )
+    }))
+  }
+
+  const handleRemoveFaq = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: prev.faqs.filter(faq => faq.id !== id)
+    }))
+  }
+
+  // Generate schema markup
+  const generatedSchemas = generateBlogSchema({
+    title: formData.title,
+    excerpt: formData.excerpt,
+    content: formData.content,
+    author: formData.author,
+    slug: formData.slug || generateSlug(formData.title),
+    cover_image: formData.cover_image,
+    categories: formData.categories,
+    tags: formData.tags as string[],
+    faqs: formData.faqs
+  })
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -1018,6 +1410,14 @@ onBlockSelect={(blockType, blockPos) => {
                 onEditorReady={(editor) => setEditorInstance(editor)}
               />
             </div>
+
+            {/* FAQ Section */}
+            <FAQSection
+              faqs={formData.faqs}
+              onAddFaq={handleAddFaq}
+              onUpdateFaq={handleUpdateFaq}
+              onRemoveFaq={handleRemoveFaq}
+            />
           </div>
         </main>
 
@@ -1452,6 +1852,51 @@ onBlockSelect={(blockType, blockPos) => {
                 />
               </div>
 
+              {/* Schema Markup Preview */}
+              <div className="p-4 border-b border-border">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Braces className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Schema Markup</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-600 rounded-full">
+                        {generatedSchemas.length} {generatedSchemas.length === 1 ? "Schema" : "Schemas"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {generatedSchemas.map((schema, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-2 py-1 bg-muted rounded-md"
+                      >
+                        {(schema as { "@type"?: string })["@type"]}
+                      </span>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSchemaPreview(true)}
+                    className="w-full gap-2"
+                  >
+                    <Braces className="h-4 w-4" />
+                    Preview Schema Markup
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Schema markup will be automatically embedded when the post is published.
+                    {formData.faqs.length > 0 && (
+                      <span className="block mt-1 text-green-600">
+                        FAQ Schema included with {formData.faqs.length} question(s).
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
               {/* SEO Fields */}
               <CollapsiblePanel title="SEO Title" icon={FileText} defaultOpen>
                 <div className="space-y-2">
@@ -1850,6 +2295,13 @@ onBlockSelect={(blockType, blockPos) => {
           )}
         </aside>
       </div>
+
+      {/* Schema Preview Modal */}
+      <SchemaPreviewModal
+        isOpen={showSchemaPreview}
+        onClose={() => setShowSchemaPreview(false)}
+        schemas={generatedSchemas}
+      />
     </div>
   )
 }

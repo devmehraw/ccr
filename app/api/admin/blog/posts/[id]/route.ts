@@ -109,6 +109,8 @@ export async function PUT(
       og_image,
       tags,
       is_published,
+      faqs,
+      schema_markup,
     } = body
 
     if (!title || !excerpt || !content || !author) {
@@ -180,6 +182,8 @@ export async function PUT(
             og_description: og_description || excerpt,
             og_image: og_image || banner_image || cover_image || null,
             tags: Array.isArray(tags) ? tags : [],
+            faqs: Array.isArray(faqs) ? faqs : [],
+            schema_markup: schema_markup || null,
             is_published: is_published !== false,
             published: is_published !== false,
             updatedAt: new Date(),

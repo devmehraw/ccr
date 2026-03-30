@@ -15,6 +15,12 @@ import {
 
 const mongoUrl = process.env.MONGODB_URI || ""
 
+interface FAQItem {
+  id: string
+  question: string
+  answer: string
+}
+
 interface BlogPost {
   _id: string
   title: string
@@ -27,6 +33,7 @@ interface BlogPost {
   author?: string
   publication_date?: string
   createdAt?: string
+  updatedAt?: string
   category?: string
   categories?: string[]
   tags?: string[]
@@ -39,6 +46,8 @@ interface BlogPost {
   og_description?: string
   is_published?: boolean
   published?: boolean
+  faqs?: FAQItem[]
+  schema_markup?: object[]
 }
 
 async function getBlogPost(slug: string): Promise<BlogPost | null> {
@@ -58,6 +67,7 @@ async function getBlogPost(slug: string): Promise<BlogPost | null> {
       _id: post._id?.toString(),
       author: post.author?.toString?.() || post.author,
       tags: Array.isArray(post.tags) ? post.tags : [],
+      faqs: Array.isArray(post.faqs) ? post.faqs : [],
       readTime: post.readTime?.toString() || post.read_time?.toString() || "5"
     } as BlogPost
   } finally {
@@ -165,10 +175,21 @@ export default async function BlogPostPage({
       <ReadingProgressBar />
 
       <main className="min-h-screen">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-        />
+        {/* Schema Markup - render each schema separately for better SEO */}
+        {Array.isArray(schemaMarkup) ? (
+          schemaMarkup.map((schema, index) => (
+            <script
+              key={index}
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+            />
+          ))
+        ) : (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
+          />
+        )}
 
         {/* ────────────────────────────────────── HERO ── */}
         <section className="relative w-full bg-gradient-to-b from-muted/60 to-background border-b border-border overflow-hidden">
@@ -285,6 +306,46 @@ export default async function BlogPostPage({
                   className="blog-content blog-article-content text-base leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: post.content }}
                 />
+
+                {/* FAQ Section */}
+                {post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0 && (
+                  <div className="mt-12 pt-8 border-t border-border">
+                    <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                      <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Frequently Asked Questions
+                    </h2>
+                    <div className="space-y-4">
+                      {post.faqs.filter((faq: any) => faq.question?.trim() && faq.answer?.trim()).map((faq: any, index: number) => (
+                        <details
+                          key={faq.id || index}
+                          className="group border border-border rounded-lg bg-card overflow-hidden"
+                        >
+                          <summary className="flex items-center justify-between cursor-pointer px-5 py-4 font-medium text-foreground hover:bg-muted/50 transition-colors">
+                            <span className="flex items-center gap-3">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">
+                                {index + 1}
+                              </span>
+                              {faq.question}
+                            </span>
+                            <svg
+                              className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </summary>
+                          <div className="px-5 pb-4 pt-2 text-muted-foreground leading-relaxed border-t border-border bg-muted/30">
+                            {faq.answer}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Author card */}
                 {post.author && (
