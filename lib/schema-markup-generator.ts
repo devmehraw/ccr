@@ -37,7 +37,7 @@ export function generateBlogSchema(post: any, authorName: string) {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://countryroof.com/blog/${post.slug}`,
+      "@id": `https://countryroof.com/blogs/${post.slug}`,
     },
     ...(post.tags && post.tags.length > 0 && {
       keywords: post.tags.join(", ")
@@ -86,22 +86,22 @@ export function generateBlogSchema(post: any, authorName: string) {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Blog",
-        item: "https://countryroof.com/blog"
+        name: "Blogs",
+        item: "https://countryroof.com/blogs"
       },
       {
         "@type": "ListItem",
         position: 3,
         name: categoryName,
         item: post.category 
-          ? `https://countryroof.com/blog?category=${encodeURIComponent(categoryName)}`
-          : "https://countryroof.com/blog"
+          ? `https://countryroof.com/blogs?category=${encodeURIComponent(categoryName)}`
+          : "https://countryroof.com/blogs"
       },
       {
         "@type": "ListItem",
         position: 4,
         name: post.title,
-        item: `https://countryroof.com/blog/${post.slug}`
+        item: `https://countryroof.com/blogs/${post.slug}`
       }
     ]
   }

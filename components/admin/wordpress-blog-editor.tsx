@@ -1220,7 +1220,7 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
   const handlePreview = () => {
     // Open preview in new tab
     const slug = formData.slug || generateSlug(formData.title)
-    window.open(`/blog/${slug}?preview=true`, "_blank")
+    window.open(`/blogs/${slug}?preview=true`, "_blank")
   }
 
   // FAQ handlers
