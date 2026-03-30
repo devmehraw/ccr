@@ -1787,7 +1787,7 @@ onBlockSelect={(blockType, blockPos) => {
                       name="slug"
                       value={formData.slug}
                       onChange={(e) => {
-                        // Auto-convert pasted or typed text to slug format
+                        // Auto-convert typed text to slug format
                         const value = e.target.value
                           .toLowerCase()
                           .replace(/[^a-z0-9\s-]/g, "")
@@ -1795,6 +1795,25 @@ onBlockSelect={(blockType, blockPos) => {
                           .replace(/-+/g, "-")
                           .replace(/(^-|-$)/g, "")
                         setFormData(prev => ({ ...prev, slug: value }))
+                      }}
+                      onKeyDown={(e) => {
+                        // Convert spacebar to hyphen
+                        if (e.key === " " || e.code === "Space") {
+                          e.preventDefault()
+                          const input = e.currentTarget
+                          const start = input.selectionStart || 0
+                          const end = input.selectionEnd || 0
+                          const currentValue = formData.slug
+                          // Only add hyphen if not at start and previous char is not already a hyphen
+                          if (start > 0 && currentValue[start - 1] !== "-") {
+                            const newValue = currentValue.slice(0, start) + "-" + currentValue.slice(end)
+                            setFormData(prev => ({ ...prev, slug: newValue }))
+                            // Set cursor position after the hyphen
+                            setTimeout(() => {
+                              input.setSelectionRange(start + 1, start + 1)
+                            }, 0)
+                          }
+                        }
                       }}
                       onPaste={(e) => {
                         e.preventDefault()
