@@ -5,7 +5,26 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import { NodeSelection } from "@tiptap/pm/state"
 import { StarterKit } from "@tiptap/starter-kit"
 import { Placeholder } from "@tiptap/extension-placeholder"
-import { Image } from "@tiptap/extension-image"
+import Image from "@tiptap/extension-image"
+
+// Extend Image extension to support style attribute for resizing
+const CustomImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: element => element.getAttribute('style'),
+        renderHTML: attributes => {
+          if (!attributes.style) {
+            return {}
+          }
+          return { style: attributes.style }
+        },
+      },
+    }
+  },
+})
 import { Link } from "@tiptap/extension-link"
 import { TextAlign } from "@tiptap/extension-text-align"
 import { Underline } from "@tiptap/extension-underline"
@@ -198,10 +217,10 @@ export function EditorCanvas({
         emptyEditorClass: "is-editor-empty",
         emptyNodeClass: "is-empty"
       }),
-      Image.configure({
-        HTMLAttributes: { class: "wp-block wp-block-image" },
-        allowBase64: true
-      }),
+CustomImage.configure({
+  HTMLAttributes: { class: "wp-block wp-block-image" },
+  allowBase64: true
+  }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { class: "rte-link" }
