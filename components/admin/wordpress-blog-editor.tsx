@@ -1782,15 +1782,49 @@ onBlockSelect={(blockType, blockPos) => {
               {/* Slug */}
               <CollapsiblePanel title="URL Slug" icon={Globe}>
                 <div className="space-y-2">
-                  <Input
-                    name="slug"
-                    value={formData.slug}
-                    onChange={handleChange}
-                    placeholder="post-url-slug"
-                    className="h-8 text-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      name="slug"
+                      value={formData.slug}
+                      onChange={(e) => {
+                        // Auto-convert pasted or typed text to slug format
+                        const value = e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9\s-]/g, "")
+                          .replace(/\s+/g, "-")
+                          .replace(/-+/g, "-")
+                          .replace(/(^-|-$)/g, "")
+                        setFormData(prev => ({ ...prev, slug: value }))
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const pastedText = e.clipboardData.getData("text")
+                        const slug = pastedText
+                          .toLowerCase()
+                          .replace(/[^a-z0-9\s-]/g, "")
+                          .replace(/\s+/g, "-")
+                          .replace(/-+/g, "-")
+                          .replace(/(^-|-$)/g, "")
+                        setFormData(prev => ({ ...prev, slug }))
+                      }}
+                      placeholder="post-url-slug"
+                      className="h-8 text-sm pr-20"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        const slug = generateSlug(formData.title)
+                        setFormData(prev => ({ ...prev, slug }))
+                      }}
+                    >
+                      Generate
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Leave empty to auto-generate from title
+                    Paste a title or type to auto-format as URL slug. Leave empty to auto-generate from title.
                   </p>
                 </div>
               </CollapsiblePanel>
