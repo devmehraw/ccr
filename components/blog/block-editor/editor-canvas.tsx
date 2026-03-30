@@ -52,7 +52,7 @@ interface EditorCanvasProps {
   onChange: (content: string) => void
   placeholder?: string
   className?: string
-  onBlockSelect?: (blockType: string | null) => void
+  onBlockSelect?: (blockType: string | null, blockPos?: number | null) => void
   onEditorReady?: (editor: ReturnType<typeof useEditor>) => void
 }
 
@@ -240,7 +240,7 @@ export function EditorCanvas({
               left: rect.left - (containerRect?.left ?? 0)
             }
           })
-          onBlockSelect?.(node.type.name)
+          onBlockSelect?.(node.type.name, from)
         }
       } else {
         const parent = resolvedPos.parent
@@ -250,7 +250,7 @@ export function EditorCanvas({
             attrs: parent.attrs,
             pos: { top: 0, left: 0 }
           })
-          onBlockSelect?.(parent.type.name)
+          onBlockSelect?.(parent.type.name, null)
         }
       }
 
@@ -314,7 +314,7 @@ export function EditorCanvas({
               }
             })
             setShowFloatingToolbar(true)
-            onBlockSelect?.("image")
+            onBlockSelect?.("image", pos)
           }
           return true
         }

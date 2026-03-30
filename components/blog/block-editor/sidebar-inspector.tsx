@@ -297,6 +297,23 @@ export function SidebarInspector({ editor, activeBlock, onClose }: SidebarInspec
       const currentWidth = widthMatch ? widthMatch[1] : ""
       const currentHeight = heightMatch ? heightMatch[1] : ""
       
+      // Helper to get the image position from current selection or find it
+      const getImagePos = (): number | null => {
+        const { selection } = editor.state
+        const node = editor.state.doc.nodeAt(selection.from)
+        if (node?.type.name === "image") {
+          return selection.from
+        }
+        // Fallback: find first image (shouldn't happen if selection is maintained)
+        let imagePos: number | null = null
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "image" && imagePos === null) {
+            imagePos = pos
+          }
+        })
+        return imagePos
+      }
+      
       const handleImageSizeChange = (width: string, height: string) => {
         const w = parseInt(width)
         const h = parseInt(height)
@@ -308,19 +325,28 @@ export function SidebarInspector({ editor, activeBlock, onClose }: SidebarInspec
         } else if (h > 0) {
           style = `height: ${h}px;`
         }
-        editor.chain().focus().updateAttributes("image", { style }).run()
+        const imagePos = getImagePos()
+        if (imagePos !== null) {
+          editor.chain().setNodeSelection(imagePos).updateAttributes("image", { style }).run()
+        }
       }
 
       const handlePresetSize = (width: number) => {
-        editor.chain().focus().updateAttributes("image", {
-          style: `width: ${width}px; max-width: 100%;`
-        }).run()
+        const imagePos = getImagePos()
+        if (imagePos !== null) {
+          editor.chain().setNodeSelection(imagePos).updateAttributes("image", {
+            style: `width: ${width}px; max-width: 100%;`
+          }).run()
+        }
       }
 
       const handlePercentSize = (percent: string) => {
-        editor.chain().focus().updateAttributes("image", {
-          style: percent === "auto" ? "" : `width: ${percent}; max-width: 100%;`
-        }).run()
+        const imagePos = getImagePos()
+        if (imagePos !== null) {
+          editor.chain().setNodeSelection(imagePos).updateAttributes("image", {
+            style: percent === "auto" ? "" : `width: ${percent}; max-width: 100%;`
+          }).run()
+        }
       }
 
       return (
@@ -332,7 +358,12 @@ export function SidebarInspector({ editor, activeBlock, onClose }: SidebarInspec
                 type="text"
                 placeholder="Describe the image"
                 defaultValue={activeBlock.attrs?.alt || ""}
-                onChange={(e) => editor.chain().focus().updateAttributes("image", { alt: e.target.value }).run()}
+                onChange={(e) => {
+                  const imagePos = getImagePos()
+                  if (imagePos !== null) {
+                    editor.chain().setNodeSelection(imagePos).updateAttributes("image", { alt: e.target.value }).run()
+                  }
+                }}
                 className="w-full px-3 py-2 text-sm border border-border rounded bg-background"
               />
               <p className="text-xs text-muted-foreground">

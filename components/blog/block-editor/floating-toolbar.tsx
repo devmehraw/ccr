@@ -53,17 +53,33 @@ export function FloatingToolbar({ editor, position, blockType }: FloatingToolbar
 
   const pixelSizePresets = [150, 300, 450, 600, 800, 1024]
 
+  // Helper to get the image position from current selection
+  const getImagePos = (): number | null => {
+    const { selection } = editor.state
+    const node = editor.state.doc.nodeAt(selection.from)
+    if (node?.type.name === "image") {
+      return selection.from
+    }
+    return null
+  }
+
   const handleImageSize = (width: string) => {
-    editor.chain().focus().updateAttributes("image", {
-      style: width === "auto" ? "" : `width: ${width}; max-width: 100%;`
-    }).run()
+    const imagePos = getImagePos()
+    if (imagePos !== null) {
+      editor.chain().setNodeSelection(imagePos).updateAttributes("image", {
+        style: width === "auto" ? "" : `width: ${width}; max-width: 100%;`
+      }).run()
+    }
     setShowSizeMenu(false)
   }
 
   const handleImagePixelSize = (widthPx: number) => {
-    editor.chain().focus().updateAttributes("image", {
-      style: `width: ${widthPx}px; max-width: 100%;`
-    }).run()
+    const imagePos = getImagePos()
+    if (imagePos !== null) {
+      editor.chain().setNodeSelection(imagePos).updateAttributes("image", {
+        style: `width: ${widthPx}px; max-width: 100%;`
+      }).run()
+    }
     setCustomWidth(widthPx.toString())
   }
 
@@ -74,7 +90,10 @@ export function FloatingToolbar({ editor, position, blockType }: FloatingToolbar
       const style = h > 0
         ? `width: ${w}px; height: ${h}px; max-width: 100%;`
         : `width: ${w}px; max-width: 100%;`
-      editor.chain().focus().updateAttributes("image", { style }).run()
+      const imagePos = getImagePos()
+      if (imagePos !== null) {
+        editor.chain().setNodeSelection(imagePos).updateAttributes("image", { style }).run()
+      }
       setShowSizeMenu(false)
     }
   }

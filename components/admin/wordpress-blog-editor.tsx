@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { EditorCanvas } from "@/components/blog/block-editor"
+import type { Editor } from "@tiptap/core"
 import {
   Save,
   Eye,
@@ -179,12 +180,14 @@ function GooglePreview({
 // Block Settings Panel Component
 function BlockSettingsPanel({
   blockType,
+  blockPos,
   onClose,
   editor
 }: {
   blockType: string | null
+  blockPos: number | null
   onClose: () => void
-  editor: ReturnType<typeof useEditor> | null
+  editor: Editor | null
 }) {
   const [imageWidth, setImageWidth] = useState("")
   const [imageHeight, setImageHeight] = useState("")
@@ -209,22 +212,21 @@ function BlockSettingsPanel({
   const BlockIcon = getBlockIcon()
   const blockLabel = blockType.charAt(0).toUpperCase() + blockType.slice(1).replace(/([A-Z])/g, " $1")
 
-  // Image size handlers
+  // Image size handlers - use the tracked blockPos for the selected image
   const handleImagePercentSize = (percent: string) => {
-    if (!editor) {
-      console.log("[v0] handleImagePercentSize: no editor")
-      return
-    }
-    console.log("[v0] handleImagePercentSize:", percent, "isActive image:", editor.isActive("image"))
+    if (!editor) return
     
-    // Find and select the image node first
-    const { state } = editor
-    let imagePos: number | null = null
-    state.doc.descendants((node, pos) => {
-      if (node.type.name === "image" && imagePos === null) {
-        imagePos = pos
+    // Use the tracked blockPos if available, otherwise try to find from current selection
+    let imagePos = blockPos
+    
+    if (imagePos === null) {
+      // Fallback: check if current selection is on an image
+      const { selection } = editor.state
+      const node = editor.state.doc.nodeAt(selection.from)
+      if (node?.type.name === "image") {
+        imagePos = selection.from
       }
-    })
+    }
     
     if (imagePos !== null) {
       editor.chain()
@@ -233,26 +235,22 @@ function BlockSettingsPanel({
           style: percent === "auto" ? "" : `width: ${percent}; max-width: 100%;`
         })
         .run()
-    } else {
-      console.log("[v0] No image found in document")
     }
   }
 
   const handleImagePixelSize = (px: number) => {
-    if (!editor) {
-      console.log("[v0] handleImagePixelSize: no editor")
-      return
-    }
-    console.log("[v0] handleImagePixelSize:", px)
+    if (!editor) return
     
-    // Find and select the image node first
-    const { state } = editor
-    let imagePos: number | null = null
-    state.doc.descendants((node, pos) => {
-      if (node.type.name === "image" && imagePos === null) {
-        imagePos = pos
+    // Use the tracked blockPos if available
+    let imagePos = blockPos
+    
+    if (imagePos === null) {
+      const { selection } = editor.state
+      const node = editor.state.doc.nodeAt(selection.from)
+      if (node?.type.name === "image") {
+        imagePos = selection.from
       }
-    })
+    }
     
     if (imagePos !== null) {
       editor.chain()
@@ -274,14 +272,16 @@ function BlockSettingsPanel({
         ? `width: ${w}px; height: ${h}px; max-width: 100%;`
         : `width: ${w}px; max-width: 100%;`
       
-      // Find and select the image node first
-      const { state } = editor
-      let imagePos: number | null = null
-      state.doc.descendants((node, pos) => {
-        if (node.type.name === "image" && imagePos === null) {
-          imagePos = pos
+      // Use the tracked blockPos if available
+      let imagePos = blockPos
+      
+      if (imagePos === null) {
+        const { selection } = editor.state
+        const node = editor.state.doc.nodeAt(selection.from)
+        if (node?.type.name === "image") {
+          imagePos = selection.from
         }
-      })
+      }
       
       if (imagePos !== null) {
         editor.chain()
@@ -294,8 +294,24 @@ function BlockSettingsPanel({
 
   const handleAltTextChange = (value: string) => {
     setAltText(value)
-    if (editor) {
-      editor.chain().focus().updateAttributes("image", { alt: value }).run()
+    if (!editor) return
+    
+    // Use the tracked blockPos if available
+    let imagePos = blockPos
+    
+    if (imagePos === null) {
+      const { selection } = editor.state
+      const node = editor.state.doc.nodeAt(selection.from)
+      if (node?.type.name === "image") {
+        imagePos = selection.from
+      }
+    }
+    
+    if (imagePos !== null) {
+      editor.chain()
+        .setNodeSelection(imagePos)
+        .updateAttributes("image", { alt: value })
+        .run()
     }
   }
 
@@ -490,6 +506,7 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activePanel, setActivePanel] = useState<"post" | "seo" | "block" | "toc">("post")
   const [selectedBlockType, setSelectedBlockType] = useState<string | null>(null)
+  const [selectedBlockPos, setSelectedBlockPos] = useState<number | null>(null)
   const [editorInstance, setEditorInstance] = useState<any>(null)
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -991,12 +1008,13 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
                 content={formData.content}
                 onChange={(content) => setFormData((prev) => ({ ...prev, content }))}
                 placeholder="Start writing or type '/' to insert a block..."
-                onBlockSelect={(blockType) => {
-                  setSelectedBlockType(blockType)
-                  if (blockType) {
-                    setActivePanel("block")
-                  }
-                }}
+onBlockSelect={(blockType, blockPos) => {
+  setSelectedBlockType(blockType)
+  setSelectedBlockPos(blockPos ?? null)
+  if (blockType) {
+  setActivePanel("block")
+  }
+  }}
                 onEditorReady={(editor) => setEditorInstance(editor)}
               />
             </div>
@@ -1383,14 +1401,16 @@ export default function WordPressBlogEditor({ initialData }: WordPressBlogEditor
           {activePanel === "block" && (
             <div className="flex-1 overflow-y-auto pb-20">
               {selectedBlockType ? (
-                <BlockSettingsPanel
-                  blockType={selectedBlockType}
-                  onClose={() => {
-                    setSelectedBlockType(null)
-                    setActivePanel("post")
-                  }}
-                  editor={editorInstance}
-                />
+<BlockSettingsPanel
+  blockType={selectedBlockType}
+  blockPos={selectedBlockPos}
+  onClose={() => {
+  setSelectedBlockType(null)
+  setSelectedBlockPos(null)
+  setActivePanel("post")
+  }}
+  editor={editorInstance}
+  />
               ) : (
                 <div className="p-4 text-center text-muted-foreground">
                   <Layers className="h-12 w-12 mx-auto mb-3 opacity-20" />
