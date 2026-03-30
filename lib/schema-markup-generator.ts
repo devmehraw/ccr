@@ -42,9 +42,9 @@ export function generateBlogSchema(post: any, authorName: string) {
     ...(post.tags && post.tags.length > 0 && {
       keywords: post.tags.join(", ")
     }),
-    ...(post.category && {
-      articleSection: Array.isArray(post.category) ? post.category[0] : post.category
-    })
+    articleSection: post.category 
+      ? (Array.isArray(post.category) ? post.category[0] : post.category)
+      : "Uncategorized"
   }
   schemas.push(articleSchema)
 
@@ -68,7 +68,11 @@ export function generateBlogSchema(post: any, authorName: string) {
     }
   }
 
-  // BreadcrumbList Schema
+  // BreadcrumbList Schema - includes category (or Uncategorized) and blog title
+  const categoryName = post.category 
+    ? (Array.isArray(post.category) ? post.category[0] : post.category)
+    : "Uncategorized"
+  
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -88,6 +92,14 @@ export function generateBlogSchema(post: any, authorName: string) {
       {
         "@type": "ListItem",
         position: 3,
+        name: categoryName,
+        item: post.category 
+          ? `https://countryroof.com/blog?category=${encodeURIComponent(categoryName)}`
+          : "https://countryroof.com/blog"
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
         name: post.title,
         item: `https://countryroof.com/blog/${post.slug}`
       }

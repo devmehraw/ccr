@@ -263,9 +263,7 @@ function generateBlogSchema({
         "url": cover_image
       }
     }),
-    ...(categories.length > 0 && {
-      "articleSection": categories[0]
-    }),
+    "articleSection": categories.length > 0 ? categories[0] : "Uncategorized",
     ...(tags.length > 0 && {
       "keywords": tags.join(", ")
     })
@@ -273,11 +271,12 @@ function generateBlogSchema({
   schemas.push(articleSchema)
 
   // FAQ Schema (if FAQs exist)
-  if (faqs.length > 0) {
+  const validFaqs = faqs.filter(faq => faq.question?.trim() && faq.answer?.trim())
+  if (validFaqs.length > 0) {
     const faqSchema = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      "mainEntity": faqs.map(faq => ({
+      "mainEntity": validFaqs.map(faq => ({
         "@type": "Question",
         "name": faq.question,
         "acceptedAnswer": {
@@ -289,7 +288,9 @@ function generateBlogSchema({
     schemas.push(faqSchema)
   }
 
-  // BreadcrumbList Schema
+  // BreadcrumbList Schema - includes category (or Uncategorized) and blog title
+  const categoryName = categories.length > 0 ? categories[0] : "Uncategorized"
+  
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -309,6 +310,14 @@ function generateBlogSchema({
       {
         "@type": "ListItem",
         "position": 3,
+        "name": categoryName,
+        "item": categories.length > 0 
+          ? `${siteUrl}/blog?category=${encodeURIComponent(categoryName)}`
+          : `${siteUrl}/blog`
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
         "name": title,
         "item": `${siteUrl}/blog/${slug}`
       }

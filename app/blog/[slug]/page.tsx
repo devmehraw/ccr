@@ -204,32 +204,30 @@ export default async function BlogPostPage({
 
           <div className="relative max-w-5xl mx-auto px-4 pt-10 pb-0">
             {/* Breadcrumb */}
-            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6">
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6 flex-wrap">
               <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
               <Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link>
-              {post.category && (
-                <>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                  <Link
-                    href={`/blog?category=${encodeURIComponent(post.category)}`}
-                    className="hover:text-foreground transition-colors"
-                  >
-                    {post.category}
-                  </Link>
-                </>
-              )}
+              <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+              <Link
+                href={post.category ? `/blog?category=${encodeURIComponent(post.category)}` : "/blog"}
+                className="hover:text-foreground transition-colors"
+              >
+                {post.category || "Uncategorized"}
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="text-foreground font-medium truncate max-w-[200px] sm:max-w-none" title={post.title}>
+                {post.title}
+              </span>
             </nav>
 
             {/* Category badge */}
-            {post.category && (
-              <Link
-                href={`/blog?category=${encodeURIComponent(post.category)}`}
-                className="inline-block mb-4 px-3 py-1 text-xs font-semibold rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-              >
-                {post.category}
-              </Link>
-            )}
+            <Link
+              href={post.category ? `/blog?category=${encodeURIComponent(post.category)}` : "/blog"}
+              className="inline-block mb-4 px-3 py-1 text-xs font-semibold rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              {post.category || "Uncategorized"}
+            </Link>
 
             {/* Title */}
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-balance leading-tight mb-6 max-w-3xl">
